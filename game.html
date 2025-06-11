@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Flappy Bird 🕊️</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+      background: #000;
+    }
+    #game {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: url('/assets/background.png') no-repeat center center;
+      background-size: cover;
+      overflow: hidden;
+      border: none;
+    }
+    #bird {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      background: url('/assets/bird.png') no-repeat center center;
+      background-size: contain;
+      top: 50vh;
+      left: 25vw;
+      transform: translateY(-20px);
+    }
+    .pipe {
+      position: absolute;
+      width: 60px;
+      background: green;
+    }
+    .pipe-top {
+      top: 0;
+      border-bottom: 5px solid black;
+    }
+    .pipe-bottom {
+      bottom: 0;
+      border-top: 5px solid black;
+    }
+    #score, #best-score {
+      position: fixed;
+      top: 10px;
+      font-size: 24px;
+      color: #fff;
+      text-shadow: 1px 1px 2px black;
+      z-index: 10;
+      user-select: none;
+    }
+    #score {
+      left: 10px;
+    }
+    #best-score {
+      right: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="game">
+  <div id="score">Score: 0</div>
+  <div id="best-score">Best Score: 0</div>
+  <div id="bird"></div>
+</div>
+
+<audio id="success-sound" src="/assets/success.mp3" preload="auto"></audio>
+
+<script>
+  const bird = document.getElementById("bird");
+  const game = document.getElementById("game");
+  const scoreDisplay = document.getElementById("score");
+  const bestScoreDisplay = document.getElementById("best-score");
+  const successSound = document.getElementById("success-sound");
+
+  let birdTop = window.innerHeight / 2 - 20;
+  let velocity = 0;
+  const gravity = 0.101;
+  const jumpStrength = -4.10;
+  let score = 0;
+  let bestScore = localStorage.getItem('flappyBestScore') || 0;
+  bestScore = Number(bestScore);
+
+  bestScoreDisplay.textContent = "Best Score: " + bestScore;
+
+  let gameOver = false;
+  let gameStarted = false;
+
+  document.addEventListener("keydown", (e) => {
+    if (e.code === "Space") {
+      if (!gameStarted) {
+        gameStarted = true;
+        startGameLoop();
+      }
+      if (!gameOver) {
+        velocity = jumpStrength;
+      }
+    }
+  });
+
+  function createPipe() {
+    const pipeGap = 200;
+    const maxPipeTopHeight = window.innerHeight - pipeGap - 50;
+    const pipeTopHeight = Math.floor(Math.random() * maxPipeTopHeight) + 50;
+    const pipeBottomHeight = window.innerHeight - pipeTopHeight - pipeGap;
+
+    const pipeTop = document.createElement("div");
+    pipeTop.classList.add("pipe", "pipe-top");
+    pipeTop.style.height = pipeTopHeight + "px";
+    pipeTop.style.left = window.innerWidth + "px";
+
+    const pipeBottom = document.createElement("div");
+    pipeBottom.classList.add("pipe", "pipe-bottom");
+    pipeBottom.style.height = pipeBottomHeight + "px";
+    pipeBottom.style.left = window.innerWidth + "px";
+
+    game.appendChild(pipeTop);
+    game.appendChild(pipeBottom);
+
+    let pipeX = window.innerWidth;
+    let passed = false;
+
+    const moveInterval = setInterval(() => {
+      if (gameOver) {
+        clearInterval(moveInterval);
+        pipeTop.remove();
+        pipeBottom.remove();
+        return;
+      }
+
+      pipeX -= 1.5;
+      pipeTop.style.left = pipeX + "px";
+      pipeBottom.style.left = pipeX + "px";
+
+      const birdBottom = birdTop + 40;
+      const birdLeft = window.innerWidth * 0.25;
+      const birdRight = birdLeft + 40;
+
+      if (
+        pipeX < birdRight + 40 &&
+        pipeX + 60 > birdLeft &&
+        (birdTop < pipeTopHeight || birdBottom > pipeTopHeight + pipeGap)
+      ) {
+        endGame();
+      }
+
+      if (!passed && pipeX + 60 < birdLeft) {
+        passed = true;
+        score++;
+        scoreDisplay.textContent = "Score: " + score;
+        successSound.currentTime = 0;
+        successSound.play();
+      }
+
+      if (pipeX < -60) {
+        pipeTop.remove();
+        pipeBottom.remove();
+        clearInterval(moveInterval);
+      }
+    }, 20);
+  }
+
+  function endGame() {
+    gameOver = true;
+    if (score > bestScore) {
+      bestScore = score;
+      localStorage.setItem('flappyBestScore', bestScore);
+      bestScoreDisplay.textContent = "Best Score: " + bestScore;
+      alert("Nouvel excellent score ! Score: " + score);
+    } else {
+      alert("Game Over! Score: " + score);
+    }
+    location.reload();
+  }
+
+  function startGameLoop() {
+    setInterval(() => {
+      if (!gameOver) createPipe();
+    }, 4000);
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  function gameLoop() {
+    if (gameOver) return;
+
+    velocity += gravity;
+    birdTop += velocity;
+
+    if (birdTop < 0) birdTop = 0;
+    if (birdTop + 40 > window.innerHeight) endGame();
+
+    bird.style.top = birdTop + "px";
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  window.addEventListener('resize', () => {
+    if (!gameStarted) {
+      birdTop = window.innerHeight / 2 - 20;
+      bird.style.top = birdTop + "px";
+    }
+  });
+</script>
+
+</body>
+</html>
